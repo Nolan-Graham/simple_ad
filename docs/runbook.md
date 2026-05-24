@@ -28,6 +28,9 @@ PW: *admins discretion, stored in organiztions password vault and password manag
 Product Key: *Add product key corresponding with license*
 HOSTNAME: DC01
 
+### dns
+
+
 
 
 ### Security Groups
