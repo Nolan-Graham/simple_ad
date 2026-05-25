@@ -1,84 +1,50 @@
-# Requires -Modules ActiveDirectory
 Import-Module ActiveDirectory
 
-# --- CONFIG ---
-$CSVPath = "scripts\create users"  #may change based on where the file is located
-$DefaultPassword = ConvertTo-SecureString "Password1" -AsPlainText -Force
-$DomainDN = "DC=mydomain.com"     # Change to your domain
-$PathMap = @{
-    "DEVELOPER"  = "OU=DEVELOPERS,$DomainDN"
-    "PEOPLEOPS"  = "OU=PEOPLE_OPS,$DomainDN"
-}
-$GroupMap = @{
-    "DEVELOPER"  = "DEVELOPERS"
-    "PEOPLEOPS"  = "PEOPLE_OPS"
-}
+# === CONFIG ===
+$CsvPath = "assets\ssot.csv"  # in-real world scenarios I would not be keeping a a ssot on a public github - however in this case I am placing it here to it can be access with a relative path.
+$DomainDN = "DC=mydomain,DC=com"
 
-# --- SAFETY CHECK ---
-if (-not (Test-Path $CSVPath)) {
-    Write-Error "CSV not found at $CSVPath"
-    exit 1
-}
-
-$Users = Import-Csv $CSVPath
-$Created = 0
-$Skipped = 0
-$Errors = 0
+# === LOAD CSV ===
+$Users = Import-Csv -Path $CsvPath
 
 foreach ($User in $Users) {
+    $Username = $User.Username
+    $Dept = $User.Department.ToUpper()  # DEVELOPER or PEOPLEOPS
+    $TargetOU = "OU=$Dept,$DomainDN"
+    $TargetGroup = "$($Dept)_Users"
+
+    # Skip if Status is not Active
+    if ($User.Status -ne "Active") {
+        Write-Host "Skipping inactive user: $Username" -ForegroundColor Yellow
+        continue
+    }
+
     try {
-        # Skip if user already exists
-        if (Get-ADUser -Filter "SamAccountName -eq '$($User.Username)'" -ErrorAction SilentlyContinue) {
-            Write-Warning "User $($User.Username) already exists. Skipping."
-            $Skipped++
-            continue
+        # 1. Get AD user object
+        $ADUser = Get-ADUser -Identity $Username -ErrorAction Stop
+
+        # 2. Move user to correct OU if not already there
+        if ($ADUser.DistinguishedName -notlike "*$TargetOU") {
+            Move-ADObject -Identity $ADUser.DistinguishedName -TargetPath $TargetOU
+            Write-Host "Moved $Username to $TargetOU" -ForegroundColor Green
+        } else {
+            Write-Host "$Username already in $TargetOU" -ForegroundColor Cyan
         }
 
-        $OUPath = $PathMap[$User.Department]
-        $Group = $GroupMap[$User.Department]
-
-        if (-not $OUPath -or -not $Group) {
-            Write-Error "No OU/Group mapping for department: $($User.Department). Skipping $($User.Username)"
-            $Errors++
-            continue
-        }
-
-        # Create the user
-        $NewUserParams = @{
-            Name                = $User.DisplayName
-            GivenName           = $User.FirstName
-            Surname             = $User.LastName
-            SamAccountName      = $User.Username
-            UserPrincipalName   = $User.Email
-            DisplayName         = $User.DisplayName
-            EmployeeID          = $User.EmployeeID
-            Department          = $User.Department
-            Title               = $User.JobTitle
-            Office              = $User.Office
-            Path                = $OUPath
-            AccountPassword     = $DefaultPassword
-            Enabled             = $true
-            ChangePasswordAtLogon = $true   # Force password change on first login
-            Description         = "Created via bulk import $(Get-Date -Format yyyy-MM-dd)"
-        }
-
-        New-ADUser @NewUserParams
-        Write-Host "Created: $($User.Username) in $OUPath" -ForegroundColor Green
-
-        # Add to security group
-        Add-ADGroupMember -Identity $Group -Members $User.Username
-        Write-Host "Added $($User.Username) to group $Group" -ForegroundColor Cyan
+        # 3. Add user to department Users group if not already a member
+        $Group = Get-ADGroup -Identity $TargetGroup -ErrorAction Stop
+        $IsMember = Get-ADGroupMember -Identity $Group -Recursive | Where-Object {$_.SamAccountName -eq $Username}
         
-        $Created++
+        if (-not $IsMember) {
+            Add-ADGroupMember -Identity $Group -Members $Username
+            Write-Host "Added $Username to $TargetGroup" -ForegroundColor Green
+        } else {
+            Write-Host "$Username already member of $TargetGroup" -ForegroundColor Cyan
+        }
 
     } catch {
-        Write-Error "Failed for $($User.Username): $_"
-        $Errors++
+        Write-Host "ERROR with $Username : $_" -ForegroundColor Red
     }
 }
 
-Write-Host "`n--- SUMMARY ---" -ForegroundColor Yellow
-Write-Host "Created: $Created"
-Write-Host "Skipped: $Skipped" 
-Write-Host "Errors:  $Errors"
-Write-Host "`nIMPORTANT: Default password is 'Password1'. Users must change at next logon."
+Write-Host "`nUser organization complete. No users added to Management groups." -ForegroundColor Magenta
