@@ -31,4 +31,13 @@ foreach ($Dept in $Departments) {
     }
 }
 
+$DeactivatedOU = 'deactivated' #also create a deactivated OU for when we need to move users there when they are terminated. In a real world scenario I would likely have a more complex process for handling deactivated users, but for the purposes of this lab this will work fine.
+$DeactivatedOUPath = "OU=$DeactivatedOU,$DomainDN"
+if (-not (Get-ADOrganizationalUnit -Filter "Name -eq '$DeactivatedOU'" -ErrorAction SilentlyContinue)) {
+    New-ADOrganizationalUnit -Name $DeactivatedOU -Path $DomainDN -ProtectedFromAccidentalDeletion $true
+    Write-Host "Created OU: $DeactivatedOUPath"
+} else {
+    Write-Host "OU already exists: $DeactivatedOUPath"
+}
+
 Write-Host "`nDone. OUs and Users groups created for $DomainDN"

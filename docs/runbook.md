@@ -111,7 +111,7 @@ Set execution policies for scripts > Set-ExecutionPolicy Unrestricted (Ensure th
 
 
 ## Creating OUs and Security Groups
-Run the [scripts\create_ou_sg.ps1] > For naming consistency when writing/running other ps1 scripts.
+Run the `scripts\create_ou_sg.ps1` > For naming consistency when writing/running other ps1 scripts.
 
 
 OUs: DEVELOPERS, PEOPLE OPS
@@ -119,7 +119,7 @@ SECURITY GROUPS: DEVELOPERS, PEOPLEOPS
 
 ### Initial User Provisioning
 
-Run [scripts\create_initial_users.ps1], this pulls user information from an ssot - in this case a csv file. Organizes those users into the respecrtive work groups and as well as security groups giving them access to shared resource drives.
+Run `scripts\create_initial_users.ps1`, this pulls user information from an ssot - in this case a csv file. Organizes those users into the respecrtive work groups and as well as security groups giving them access to shared resource drives.
 
 
 ### Group Polices
@@ -178,5 +178,37 @@ Settings > System > Advanced System Settings > Rename: Client1 > join active dir
 *When logging back into the account, it will go through some initial account setup* 
 
 ## User Lifecycle Management
- 
 
+### Onboarding
+
+- **SSOT Update**: Add new hire record to `assets\ssot.csv` with `Status: New`
+- **Script**: Run `scripts\new_onboarding.ps1` 
+- **What it does**:
+  - Audits SSOT for users with status "New"
+  - Creates AD account using company naming convention from CSV
+  - Sets temporary password (user changes on first logon)
+  - Adds user to department-specific OU and security group
+  - Updates SSOT status to "Active"
+- **Reference**: Department-to-OU mapping defined in `scripts\create_ou_sg.ps1`
+
+### Offboarding
+
+- **Trigger**: Update user status to "Terminated" requirement or run script directly
+- **Script**: Run `scripts\deactivate_user.ps1`
+- **What it does**:
+  - Prompts for employee number (references SSOT)
+  - Removes user from all security groups
+  - Moves account to `OU=deactivated` container
+  - Updates SSOT status to "Terminated"
+  - Requires confirmation before making changes
+
+### Transfers / Department Changes
+
+- **Script**: Run `scripts\transfer_users.ps1`
+- **What it does**:
+  - Prompts for employee number and target department code
+  - References `assets\department_mapping.csv` for OU and security group mappings
+  - Moves user to target OU
+  - Adds to target security group, removes from other department groups
+  - Provides confirmation message upon completion
+- **Department Codes**: 101=DEVELOPER, 102=PEOPLEOPS (see `department_mapping.csv`)

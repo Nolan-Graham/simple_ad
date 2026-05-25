@@ -1,0 +1,4 @@
+Department,OU,SecurityGroup,Code
+DEVELOPER,"OU=DEVELOPER,DC=mydomain,DC=com",DEVELOPER_Users,101
+PEOPLEOPS,"OU=PEOPLEOPS,DC=mydomain,DC=com",PEOPLEOPS_Users,102
+DEACTIVATED,"OU=deactivated,DC=mydomain,DC=com",,999
