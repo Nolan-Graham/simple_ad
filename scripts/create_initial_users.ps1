@@ -1,11 +1,11 @@
 Import-Module ActiveDirectory
 
-# === CONFIG ===
+
 $CsvPath = "assets\ssot.csv"  # in-real world scenarios I would not be keeping a a ssot on a public github - however in this case I am placing it here to it can be access with a relative path.
 $DomainDN = "DC=mydomain,DC=com"
 
-# === LOAD CSV ===
-$Users = Import-Csv -Path $CsvPath
+
+$Users = Import-Csv -Path $CsvPath #loads the csv
 
 foreach ($User in $Users) {
     $Username = $User.Username
@@ -13,7 +13,7 @@ foreach ($User in $Users) {
     $TargetOU = "OU=$Dept,$DomainDN"
     $TargetGroup = "$($Dept)_Users"
 
-    # Skip if Status is not Active
+    # skip if Status is not Active
     if ($User.Status -ne "Active") {
         Write-Host "Skipping inactive user: $Username" -ForegroundColor Yellow
         continue
