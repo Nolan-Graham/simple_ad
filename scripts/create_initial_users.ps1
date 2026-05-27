@@ -20,10 +20,10 @@ foreach ($User in $Users) {
     }
 
     try {
-        # 1. Get AD user object
+       
         $ADUser = Get-ADUser -Identity $Username -ErrorAction Stop
 
-        # 2. Move user to correct OU if not already there
+        
         if ($ADUser.DistinguishedName -notlike "*$TargetOU") {
             Move-ADObject -Identity $ADUser.DistinguishedName -TargetPath $TargetOU
             Write-Host "Moved $Username to $TargetOU" -ForegroundColor Green
@@ -31,7 +31,7 @@ foreach ($User in $Users) {
             Write-Host "$Username already in $TargetOU" -ForegroundColor Cyan
         }
 
-        # 3. Add user to department Users group if not already a member
+        
         $Group = Get-ADGroup -Identity $TargetGroup -ErrorAction Stop
         $IsMember = Get-ADGroupMember -Identity $Group -Recursive | Where-Object {$_.SamAccountName -eq $Username}
         

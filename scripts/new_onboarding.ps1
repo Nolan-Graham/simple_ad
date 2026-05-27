@@ -34,12 +34,12 @@ foreach ($User in $NewUsers) {
     Write-Host "`nProcessing: $DisplayName ($Username)"
 
     try {
-        # 1. Check if user already exists
+        
         $ExistingUser = Get-ADUser -Identity $Username -ErrorAction SilentlyContinue
         if ($ExistingUser) {
             Write-Host "  User $Username already exists in AD. Skipping creation." -ForegroundColor Yellow
         } else {
-            # 2. Create the user account
+           
             New-ADUser `
                 -SamAccountName $Username `
                 -UserPrincipalName "$Username@mydomain.com" `
@@ -51,13 +51,13 @@ foreach ($User in $NewUsers) {
                 -Enabled $true `
                 -ErrorAction Stop
 
-            # 3. Set default password
+            
             Set-ADAccountPassword -Identity $Username -Reset -NewPassword (ConvertTo-SecureString -AsPlainText $DefaultPassword -Force) -ErrorAction Stop
             Write-Host "  Created user account: $Username" -ForegroundColor Green
             Write-Host "  Set temporary password (user must change on first logon)" -ForegroundColor Green
         }
 
-        # 4. Add user to department security group
+        
         $Group = Get-ADGroup -Identity $TargetGroup -ErrorAction SilentlyContinue
         if ($Group) {
             $IsMember = Get-ADGroupMember -Identity $Group -Recursive | Where-Object { $_.SamAccountName -eq $Username }
@@ -71,7 +71,7 @@ foreach ($User in $NewUsers) {
             Write-Host "  WARNING: Group $TargetGroup not found. User not added to group." -ForegroundColor Yellow
         }
 
-        # 5. Update SSOT status to Active
+        
         foreach ($row in $Users) {
             if ($row.EmployeeID -eq $User.EmployeeID) {
                 $row.Status = 'Active'
@@ -84,7 +84,7 @@ foreach ($User in $NewUsers) {
     }
 }
 
-# 6. Write updated SSOT back to file
+
 try {
     $Users | Export-Csv -Path $SsotPath -NoTypeInformation
     Write-Host "`nOnboarding complete. SSOT updated." -ForegroundColor Green
